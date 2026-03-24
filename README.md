@@ -12,7 +12,7 @@
 
 <div align="center">
 
-### 🔐 Brought to you by [Crypter.cloud](https://crypter.cloud) & [Crypter.shop](https://crypter.shop)
+### 🔐 Brought to you by [Kurtz](https://t.me/accusable)
 *Advanced cryptography and security solutions*
 
 [![Telegram Channel](https://img.shields.io/badge/Telegram-Channel-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/CrypterCC) [![Telegram Chat](https://img.shields.io/badge/Telegram-Chat-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](http://t.me/+cqqW4Z9PcP9kODE0) [![Reviews & Vouches](https://img.shields.io/badge/Reviews_%26_Vouches-Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/CCVouchesReviews)
