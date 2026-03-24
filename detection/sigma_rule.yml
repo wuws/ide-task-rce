@@ -1,0 +1,150 @@
+# =============================================================================
+# Sigma Rule: VS Code tasks.json folderOpen Auto-Execution Detection
+# =============================================================================
+#
+# Detects when VS Code, Cursor, or Windsurf spawns suspicious child processes
+# as a result of the "runOn: folderOpen" automatic task execution feature.
+#
+# This rule targets the behavioral pattern rather than the file itself:
+# the IDE's shell process spawning potentially malicious child processes
+# immediately after workspace open.
+#
+# Reference: IDE Folder-Open RCE vulnerability
+# Used by: Lazarus Group / Contagious Interview campaign
+# MITRE ATT&CK: T1204.001, T1059
+# =============================================================================
+
+title: VS Code/Cursor/Windsurf Suspicious Child Process via Auto-Task Execution
+id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+status: experimental
+description: |
+    Detects suspicious processes spawned by VS Code, Cursor, or Windsurf
+    IDE shell processes. This may indicate exploitation of the tasks.json
+    "runOn: folderOpen" auto-execution feature, which has been used by
+    the Lazarus Group (DPRK) in the Contagious Interview campaign to
+    achieve code execution when developers open malicious repositories.
+references:
+    - https://code.visualstudio.com/docs/editor/tasks
+    - https://attack.mitre.org/techniques/T1204/001/
+author: IDE Folder-Open RCE Research
+date: 2025/03/01
+modified: 2026/03/18
+tags:
+    - attack.execution
+    - attack.t1204.001
+    - attack.t1059
+    - attack.defense-evasion
+    - attack.t1564
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    # Parent process is an IDE terminal/shell
+    selection_parent:
+        ParentImage|endswith:
+            - '\Code.exe'
+            - '\Cursor.exe'
+            - '\Windsurf.exe'
+            - '\code-insiders.exe'
+            - '\codium.exe'
+            - '\cmd.exe'
+            - '\powershell.exe'
+            - '\pwsh.exe'
+        ParentCommandLine|contains:
+            - 'Code'
+            - 'Cursor'
+            - 'Windsurf'
+
+    # Suspicious child processes
+    selection_suspicious_process:
+        Image|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+            - '\cmd.exe'
+            - '\mshta.exe'
+            - '\rundll32.exe'
+            - '\regsvr32.exe'
+            - '\cscript.exe'
+            - '\wscript.exe'
+            - '\msiexec.exe'
+            - '\certutil.exe'
+            - '\bitsadmin.exe'
+
+    # Suspicious command line patterns
+    selection_cmdline:
+        CommandLine|contains:
+            - '-EncodedCommand'
+            - '-EC '
+            - 'Invoke-Expression'
+            - 'IEX('
+            - 'IEX ('
+            - 'DownloadString'
+            - 'DownloadFile'
+            - 'Invoke-WebRequest'
+            - 'Net.WebClient'
+            - 'Start-Process'
+            - '-urlcache'
+            - '/transfer'
+            - 'FromBase64String'
+            - 'hidden'
+            - '-WindowStyle Hidden'
+            - '-w hidden'
+
+    # Network download tools spawned by IDE
+    selection_download:
+        Image|endswith:
+            - '\curl.exe'
+            - '\wget.exe'
+        ParentImage|endswith:
+            - '\Code.exe'
+            - '\Cursor.exe'
+            - '\Windsurf.exe'
+            - '\cmd.exe'
+            - '\powershell.exe'
+
+    condition: selection_parent and (selection_suspicious_process or selection_cmdline or selection_download)
+falsepositives:
+    - Legitimate VS Code tasks that run PowerShell build scripts
+    - Developer tools that use cmd.exe for build automation
+    - Extension-triggered terminal commands
+level: high
+
+---
+# =============================================================================
+# Additional Rule: tasks.json File Creation/Modification Detection
+# =============================================================================
+
+title: VS Code tasks.json with folderOpen Created or Modified
+id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+status: experimental
+description: |
+    Detects creation or modification of .vscode/tasks.json files that may
+    contain the "runOn: folderOpen" trigger. This helps identify when
+    malicious workspace configurations are introduced, such as through
+    git clone of a trojanized repository.
+references:
+    - https://code.visualstudio.com/docs/editor/tasks
+author: IDE Folder-Open RCE Research
+date: 2025/03/01
+modified: 2026/03/18
+tags:
+    - attack.persistence
+    - attack.t1204.001
+logsource:
+    category: file_event
+    product: windows
+detection:
+    selection:
+        TargetFilename|endswith: '\.vscode\tasks.json'
+    filter_ide:
+        # Exclude modifications made by the IDE settings UI itself
+        Image|endswith:
+            - '\Code.exe'
+            - '\Cursor.exe'
+            - '\Windsurf.exe'
+    condition: selection and not filter_ide
+falsepositives:
+    - Legitimate project setup that includes tasks.json
+    - Version control operations (git checkout, pull)
+    - IDE extension installations
+level: medium
